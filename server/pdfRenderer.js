@@ -1,6 +1,6 @@
-import { chromium } from 'playwright';
 import { pdfConfig } from './config.js';
 import { PdfError } from './errors.js';
+import { launchBrowser } from './browserLauncher.js';
 
 let browserPromise;
 
@@ -24,7 +24,7 @@ export function validateRenderRequest(payload) {
   return {
     html: payload.html,
     filename: sanitizeFilename(payload.filename || 'document.pdf'),
-    paper: typeof payload.paper === 'string' && payload.paper ? payload.paper : pdfConfig.defaultPaper,
+    paper: normalizePaper(payload.paper),
     margin: normalizeMargin(payload.margin),
     metadata: payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : {}
   };
@@ -34,36 +34,62 @@ export async function renderPdf(request) {
   const browser = await getBrowser();
   const context = await browser.newContext({
     javaScriptEnabled: true,
-    bypassCSP: false
+    bypassCSP: false,
+    acceptDownloads: false
   });
   const page = await context.newPage();
 
   try {
     page.setDefaultTimeout(pdfConfig.renderTimeoutMs);
-    await page.route('file://**', (route) => route.abort());
-    await page.setContent(request.html, {
-      waitUntil: 'networkidle',
-      timeout: pdfConfig.renderTimeoutMs
-    });
-    await page.waitForFunction(() => window.__PRINT_READY__ === true, null, {
-      timeout: pdfConfig.renderTimeoutMs
-    });
+    page.on('popup', (popup) => popup.close().catch(() => {}));
+    page.on('download', (download) => download.cancel().catch(() => {}));
+    await page.route('**/*', createResourceGuard());
 
-    return await page.pdf({
-      format: request.paper,
-      margin: request.margin,
-      printBackground: true,
-      preferCSSPageSize: true,
-      timeout: pdfConfig.renderTimeoutMs
-    });
-  } catch (error) {
-    if (String(error?.message || '').includes('Timeout')) {
-      throw new PdfError('PDF_RENDER_TIMEOUT', 'PDF render timed out', 504);
-    }
+    await runWithTimeoutCode(
+      () => page.setContent(request.html, { waitUntil: 'networkidle', timeout: pdfConfig.renderTimeoutMs }),
+      'PDF_HTML_LOAD_TIMEOUT',
+      'HTML load timed out'
+    );
 
-    throw error;
+    await runWithTimeoutCode(
+      () =>
+        page.waitForFunction(() => window.__PRINT_READY__ === true, null, {
+          timeout: pdfConfig.printReadyTimeoutMs
+        }),
+      'PDF_PRINT_READY_TIMEOUT',
+      'Waiting for window.__PRINT_READY__ timed out'
+    );
+
+    return await runWithTimeoutCode(
+      () =>
+        page.pdf({
+          format: request.paper,
+          margin: request.margin,
+          printBackground: true,
+          preferCSSPageSize: true,
+          timeout: pdfConfig.renderTimeoutMs
+        }),
+      'PDF_RENDER_TIMEOUT',
+      'PDF render timed out'
+    );
   } finally {
     await context.close().catch(() => {});
+  }
+}
+
+export async function checkRendererReady() {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+
+  try {
+    await page.setContent('<!doctype html><html><body><script>window.__PDF_READY_CHECK__=true</script></body></html>');
+    await page.waitForFunction(() => window.__PDF_READY_CHECK__ === true, null, { timeout: 5000 });
+    return {
+      ok: true,
+      browser: browser.__pdfLaunchLabel || 'unknown'
+    };
+  } finally {
+    await page.close().catch(() => {});
   }
 }
 
@@ -76,55 +102,72 @@ export async function closeBrowser() {
 
 function getBrowser() {
   if (!browserPromise) {
-    browserPromise = launchBrowser();
+    browserPromise = launchBrowser().catch((error) => {
+      browserPromise = undefined;
+      throw error;
+    });
   }
 
   return browserPromise;
 }
 
-async function launchBrowser() {
-  const launchOptions = {
-    headless: true
-  };
+function createResourceGuard() {
+  return async function guardResource(route) {
+    const url = route.request().url();
+    const decision = getResourceDecision(url);
 
-  if (pdfConfig.browserExecutablePath) {
-    return chromium.launch({
-      ...launchOptions,
-      executablePath: pdfConfig.browserExecutablePath
-    });
-  }
-
-  if (pdfConfig.browserChannel) {
-    return chromium.launch({
-      ...launchOptions,
-      channel: pdfConfig.browserChannel
-    });
-  }
-
-  try {
-    return await chromium.launch(launchOptions);
-  } catch (error) {
-    const fallbackChannels = process.platform === 'win32' ? ['msedge', 'chrome'] : ['chrome', 'msedge'];
-    let lastError = error;
-
-    for (const channel of fallbackChannels) {
-      try {
-        console.warn('PDF_BROWSER_FALLBACK', {
-          channel,
-          reason: error?.message
-        });
-
-        return await chromium.launch({
-          ...launchOptions,
-          channel
-        });
-      } catch (fallbackError) {
-        lastError = fallbackError;
-      }
+    if (decision.allow) {
+      await route.continue();
+      return;
     }
 
-    throw lastError;
+    console.warn('PDF_RESOURCE_BLOCKED', {
+      url,
+      reason: decision.reason
+    });
+    await route.abort('blockedbyclient');
+  };
+}
+
+function getResourceDecision(url) {
+  let parsed;
+
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { allow: false, reason: 'invalid-url' };
   }
+
+  if (parsed.protocol === 'file:') {
+    return { allow: false, reason: 'file-url' };
+  }
+
+  if (['data:', 'blob:', 'about:'].includes(parsed.protocol)) {
+    return { allow: true };
+  }
+
+  if (['http:', 'https:'].includes(parsed.protocol)) {
+    if (pdfConfig.allowExternalResources) return { allow: true };
+    if (pdfConfig.allowedResourceOrigins.includes(parsed.origin)) return { allow: true };
+    return { allow: false, reason: 'external-resource' };
+  }
+
+  return { allow: false, reason: 'unsupported-protocol' };
+}
+
+async function runWithTimeoutCode(task, code, message) {
+  try {
+    return await task();
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      throw new PdfError(code, message, 504);
+    }
+    throw error;
+  }
+}
+
+function isTimeoutError(error) {
+  return /timeout|timed out/i.test(String(error?.message || ''));
 }
 
 function normalizeMargin(margin) {
@@ -140,6 +183,11 @@ function normalizeMargin(margin) {
     bottom: coerceCssLength(margin.bottom, fallback.bottom),
     left: coerceCssLength(margin.left, fallback.left)
   };
+}
+
+function normalizePaper(value) {
+  const paper = String(value || pdfConfig.defaultPaper).toUpperCase();
+  return ['A3', 'A4'].includes(paper) ? paper : pdfConfig.defaultPaper;
 }
 
 function coerceCssLength(value, fallback) {

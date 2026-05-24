@@ -1,9 +1,10 @@
+import { createSSRApp, h } from 'vue';
+import { renderToString } from '@vue/server-renderer';
+import PrintReport from './PrintReport.vue';
 import { printCss } from './printCss.js';
+import { getPaperSpec } from './paperConfig.js';
 
 export async function buildReportHtml(report) {
-  const { createSSRApp, h } = await import('vue');
-  const { renderToString } = await import('@vue/server-renderer');
-  const { default: PrintReport } = await import('./PrintReport.vue');
   const markup = await renderToString(createSSRApp({ render: () => h(PrintReport, { report }) }));
 
   return `<!doctype html>
@@ -40,20 +41,17 @@ ${buildPageCss(report)}</style>
 }
 
 export function buildPageCss(report) {
-  const paper = report.paper || 'A4';
-  const orientation = report.orientation === 'landscape' ? 'landscape' : 'portrait';
-  const width = paper === 'A3' ? (orientation === 'landscape' ? '420mm' : '297mm') : orientation === 'landscape' ? '297mm' : '210mm';
-  const height = paper === 'A3' ? (orientation === 'landscape' ? '297mm' : '420mm') : orientation === 'landscape' ? '210mm' : '297mm';
+  const spec = getPaperSpec(report.paper, report.orientation);
 
   return `@page {
-  size: ${paper} ${orientation};
+  size: ${spec.paper} ${spec.orientation};
   margin: 0;
 }
 
 @media print {
   html,
   body {
-    width: ${width};
+    width: ${spec.width};
     height: auto;
     min-height: 0;
     margin: 0;

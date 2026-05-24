@@ -38,15 +38,42 @@ body {
 
 .actions {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #aebac2;
+  border-radius: 999px;
+  color: #51636d;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-badge--done {
+  color: #17645f;
+  border-color: #8abbb4;
+  background: #effaf8;
+}
+
+.status-badge--error {
+  color: #8f2222;
+  border-color: #d89a9a;
+  background: #fff5f5;
 }
 
 .test-panel {
   position: sticky;
   top: 75px;
   z-index: 9;
-  display: grid;
-  grid-template-columns: auto minmax(220px, 420px) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
   padding: 12px 28px;
@@ -66,7 +93,7 @@ body {
   font-weight: 700;
 }
 
-.field input,
+.field input:not([type='checkbox']),
 .field select {
   width: 96px;
   height: 36px;
@@ -82,7 +109,23 @@ body {
   width: 210px;
 }
 
+#paperType,
+#orientationType {
+  width: 116px;
+}
+
+#watermarkText {
+  width: 132px;
+}
+
+.field--inline input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: #17645f;
+}
+
 .row-slider {
+  flex: 1 1 220px;
   width: 100%;
   accent-color: #17645f;
 }
@@ -94,6 +137,31 @@ body {
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.renderer-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 28px;
+  border-bottom: 1px solid #d6e0e6;
+  color: #51636d;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.renderer-panel div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.renderer-panel strong {
+  color: #172026;
+}
+
+.renderer-panel small {
+  color: #8f2222;
 }
 
 .example-tabs {
@@ -195,17 +263,43 @@ button:disabled {
   line-height: 1;
 }
 
+.preview-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px 0;
+}
+
+.preview-actions button.active {
+  color: #fff;
+  border-color: #17645f;
+  background: #17645f;
+}
+
 .preview-frame {
   overflow-x: auto;
   padding: 1px 24px 36px;
 }
 
+.html-preview {
+  display: block;
+  width: min(100%, 1280px);
+  height: calc(100vh - 240px);
+  min-height: 640px;
+  margin: 24px auto 0;
+  border: 1px solid #c8d2d8;
+  border-radius: 8px;
+  background: #fff;
+}
+
 @media print {
   .toolbar,
   .test-panel,
+  .renderer-panel,
   .example-tabs,
   .alert,
-  .toast {
+  .toast,
+  .preview-actions {
     display: none;
   }
 

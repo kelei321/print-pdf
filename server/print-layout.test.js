@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browserLauncher.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildPageCss } from '../src/print/buildReportHtml.js';
 import { printCss } from '../src/print/printCss.js';
@@ -7,7 +7,7 @@ let browser;
 
 describe('print layout guardrails', () => {
   beforeAll(async () => {
-    browser = await chromium.launch({ channel: process.env.PDF_BROWSER_CHANNEL || 'msedge', headless: true });
+    browser = await launchBrowser();
   });
 
   afterAll(async () => {

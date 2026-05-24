@@ -46,6 +46,53 @@ body {
   --print-page-height: 297mm;
 }
 
+
+.print-watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: 180mm;
+  transform: translate(-50%, -50%) rotate(-28deg);
+  color: #101820;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  line-height: 1.4;
+  opacity: var(--print-watermark-opacity, 0.08);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.print-page > :not(.print-watermark):not(.print-fixed-footer) {
+  position: relative;
+  z-index: 1;
+}
+
+.print-fixed-footer {
+  position: fixed;
+  right: 10mm;
+  bottom: 5mm;
+  left: 10mm;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8mm;
+  color: #6b7a82;
+  font-size: 8px;
+  pointer-events: none;
+}
+
+.print-fixed-footer span:nth-child(2) {
+  text-align: center;
+}
+
+.print-fixed-footer span:nth-child(3) {
+  text-align: right;
+}
+
 .report-header {
   display: flex;
   align-items: flex-start;

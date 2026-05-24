@@ -1,3 +1,6 @@
+import { getPrintTemplate, printExamples as registeredPrintExamples } from './templates/registry.js';
+import { normalizeOrientation, normalizePaper } from './paperConfig.js';
+
 export const MIN_ROW_COUNT = 30;
 export const MAX_ROW_COUNT = 10000;
 export const DEFAULT_ROW_COUNT = 360;
@@ -13,91 +16,44 @@ const statuses = [
   { label: '延迟', key: 'late' }
 ];
 
-export const printExamples = [
-  {
-    id: 'a3-ledger',
-    name: 'A3 横向明细宽表',
-    description: '多页宽表、分组汇总、重复表头，适合库存台账和履约明细。',
-    paper: 'A3',
-    orientation: 'landscape',
-    padding: '10mm 10mm 9mm',
-    rowsEnabled: true
-  },
-  {
-    id: 'a4-contract',
-    name: 'A4 合同',
-    description: '常见合同/协议版式，含甲乙方、条款和签章。',
-    paper: 'A4',
-    orientation: 'portrait',
-    padding: '16mm 14mm',
-    rowsEnabled: false
-  },
-  {
-    id: 'a4-statement',
-    name: 'A4 对账单',
-    description: '客户账单、费用明细、合计与付款信息。',
-    paper: 'A4',
-    orientation: 'portrait',
-    padding: '14mm 12mm',
-    rowsEnabled: false
-  },
-  {
-    id: 'a3-summary',
-    name: 'A3 横向汇总看板',
-    description: '区域 KPI、风险清单和趋势摘要，适合经营例会材料。',
-    paper: 'A3',
-    orientation: 'landscape',
-    padding: '12mm',
-    rowsEnabled: false
-  },
-  {
-    id: 'a4-waybill',
-    name: 'A4 物流面单',
-    description: '包含收寄件信息、二维码、条码、分拣码和签收联。',
-    paper: 'A4',
-    orientation: 'portrait',
-    padding: '10mm',
-    rowsEnabled: false
-  },
-  {
-    id: 'a4-inspection',
-    name: 'A4 设备巡检单',
-    description: '设备二维码、巡检项目、结果勾选、异常记录和负责人签字。',
-    paper: 'A4',
-    orientation: 'portrait',
-    padding: '12mm',
-    rowsEnabled: false
-  },
-  {
-    id: 'a3-asset-tags',
-    name: 'A3 资产标签批量打印',
-    description: '批量资产标签、二维码、条码、设备编码和位置字段。',
-    paper: 'A3',
-    orientation: 'landscape',
-    padding: '8mm',
-    rowsEnabled: false
-  }
-];
+export const printExamples = registeredPrintExamples;
 
 export const sampleReport = createSampleReport(DEFAULT_ROW_COUNT, 'a3-ledger');
 
 export function getPrintExample(exampleId) {
-  return printExamples.find((example) => example.id === exampleId) || printExamples[0];
+  const template = getPrintTemplate(exampleId);
+  const resolvedId = template === getPrintTemplate('a3-ledger') && !registeredPrintExamples.some((example) => example.id === exampleId)
+    ? 'a3-ledger'
+    : exampleId;
+
+  return {
+    id: resolvedId,
+    name: template.name,
+    description: template.description,
+    paper: template.paper,
+    orientation: template.orientation,
+    padding: template.padding,
+    rowsEnabled: template.rowsEnabled
+  };
 }
 
-export function createSampleReport(rowCount = DEFAULT_ROW_COUNT, exampleId = 'a3-ledger') {
+export function createSampleReport(rowCount = DEFAULT_ROW_COUNT, exampleId = 'a3-ledger', overrides = {}) {
   const example = getPrintExample(exampleId);
   const safeRowCount = clampRowCount(rowCount);
+  const paper = normalizePaper(overrides.paper || example.paper, example.paper);
+  const orientation = normalizeOrientation(overrides.orientation || example.orientation, example.orientation);
   const base = {
     type: example.id,
-    paper: example.paper,
-    orientation: example.orientation,
-    padding: example.padding,
+    paper,
+    orientation,
+    padding: overrides.padding || example.padding,
     exampleName: example.name,
     title: example.name,
     reportNo: `${example.id.toUpperCase()}-${safeRowCount}`,
     period: '2026-04-01 至 2026-04-28',
-    generatedAt: '2026-04-29 21:20'
+    generatedAt: '2026-04-29 21:20',
+    watermark: normalizeWatermark(overrides.watermark),
+    footer: normalizeFooter(overrides.footer, example)
   };
 
   if (example.id === 'a4-contract') return createContractReport(base);
@@ -113,6 +69,38 @@ export function clampRowCount(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return DEFAULT_ROW_COUNT;
   return Math.min(MAX_ROW_COUNT, Math.max(MIN_ROW_COUNT, Math.round(parsed)));
+}
+
+
+function normalizeWatermark(watermark) {
+  if (!watermark || typeof watermark !== 'object') {
+    return { enabled: false, text: '内部资料', opacity: 0.08 };
+  }
+
+  return {
+    enabled: Boolean(watermark.enabled),
+    text: String(watermark.text || '内部资料').slice(0, 32),
+    opacity: clampNumber(watermark.opacity, 0.02, 0.18, 0.08)
+  };
+}
+
+function normalizeFooter(footer, example) {
+  if (!footer || typeof footer !== 'object') {
+    return { enabled: false, left: example.name, center: '', right: '' };
+  }
+
+  return {
+    enabled: Boolean(footer.enabled),
+    left: String(footer.left ?? example.name).slice(0, 64),
+    center: String(footer.center ?? '').slice(0, 64),
+    right: String(footer.right ?? '').slice(0, 64)
+  };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function createLedgerReport(base, rowCount) {
