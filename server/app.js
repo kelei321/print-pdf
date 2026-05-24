@@ -1,4 +1,3 @@
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import express from 'express';
 import { pdfConfig } from './config.js';
@@ -16,7 +15,7 @@ export function createApp({ renderer = renderPdf, readyCheck = checkRendererRead
   });
 
   app.use(cors());
-  app.use(bodyParser.json({ limit: `${pdfConfig.maxHtmlBytes}b` }));
+  app.use(express.json({ limit: `${pdfConfig.maxHtmlBytes}b` }));
   app.use((req, res, next) => {
     req.requestId = req.headers['x-request-id'] || createRequestId();
     res.setHeader('X-Request-Id', req.requestId);

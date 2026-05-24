@@ -5,7 +5,7 @@
 本地开发启动：
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 访问：
@@ -122,17 +122,17 @@ X-PDF-Render-Duration-Ms: 1760
 推荐改打印样式或模板后按顺序执行：
 
 ```bash
-npm run build
-npm run test:unit
-npm run test:layout
-npm run test:pdf
+pnpm build
+pnpm test:unit
+pnpm test:layout
+pnpm test:pdf
 ```
 
 大数据性能基准：
 
 ```bash
-npm run test:perf
-PDF_PERF_ROWS=5000,10000 npm run test:perf
+pnpm test:perf
+PDF_PERF_ROWS=5000,10000 pnpm test:perf
 ```
 
 ## 7. 常见错误码

@@ -13,11 +13,16 @@ Vue 3 + Node + Playwright 的打印页预览与服务端 PDF 导出示例，覆�
 - 默认禁止 `file://` 和外部 HTTP(S) 资源，可通过环境变量放开或配置白名单
 - 单测、布局测试、PDF smoke 测试和性能基准脚本
 
+## 运行要求
+
+- Node.js 20.19 或以上
+- pnpm 10 或以上（建议通过 Corepack 使用 `packageManager` 固定版本）
+
 ## 本地启动
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 前端默认地址：
@@ -35,19 +40,19 @@ http://127.0.0.1:3000
 ## 常用命令
 
 ```bash
-npm run build       # 前端构建
-npm run test        # 全量 vitest
-npm run test:unit   # API/参数校验单测
-npm run test:layout # 打印布局 guardrail
-npm run test:pdf    # 7 个模板真实生成 PDF smoke 测试
-npm run test:perf   # A3 宽表性能基准，默认 30/360/1000 行
-npm run smoke       # build + PDF smoke
+pnpm build       # 前端构建
+pnpm test        # 全量 vitest
+pnpm test:unit   # API/参数校验单测
+pnpm test:layout # 打印布局 guardrail
+pnpm test:pdf    # 7 个模板真实生成 PDF smoke 测试
+pnpm test:perf   # A3 宽表性能基准，默认 30/360/1000 行
+pnpm smoke       # build + PDF smoke
 ```
 
 可扩展性能测试行数：
 
 ```bash
-PDF_PERF_ROWS=5000,10000 npm run test:perf
+PDF_PERF_ROWS=5000,10000 pnpm test:perf
 ```
 
 ## 重要文件

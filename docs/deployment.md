@@ -20,26 +20,26 @@ POST /api/pdf/render
 
 ## 2. 运行要求
 
-- Node.js 20 或以上
-- npm 10 或以上
+- Node.js 20.19 或以上
+- pnpm 10 或以上（建议通过 Corepack 使用 `packageManager` 固定版本）
 - Chromium / Chrome / Microsoft Edge / Playwright Chromium 任意一种可用浏览器
 
 ## 3. 安装依赖
 
 ```bash
-npm ci
+pnpm install --frozen-lockfile
 ```
 
 安装 Playwright Chromium：
 
 ```bash
-npx playwright install chromium
+pnpm exec playwright install chromium
 ```
 
 如不安装 Playwright 自带 Chromium，也可以使用服务器已有浏览器：
 
 ```bash
-PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run start
+PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium pnpm start
 ```
 
 ## 4. 环境变量
@@ -72,8 +72,8 @@ PDF_BROWSER_EXECUTABLE_PATH
 ## 5. 构建与启动
 
 ```bash
-npm run build
-npm run start
+pnpm build
+pnpm start
 ```
 
 生产环境可由 Nginx 托管 `dist/`，并把 `/api/` 转发到 Node PDF 服务。
@@ -133,7 +133,7 @@ server {
 - 默认已禁止 `file://` 和外部 HTTP(S) 资源；确需外部图片/字体时，优先用 `PDF_ALLOWED_RESOURCE_ORIGINS` 做白名单。
 - 根据机器资源调整 `PDF_MAX_CONCURRENT`、`PDF_MAX_QUEUE` 和 `PDF_QUEUE_TIMEOUT_MS`，避免并发渲染耗尽 CPU/内存，也避免请求无限等待。
 - 使用日志中的 `requestId`、`metadata.businessId`、耗时和错误码追踪导出问题。
-- 大数据导出前先用 `npm run test:perf` 建立性能基准。
+- 大数据导出前先用 `pnpm test:perf` 建立性能基准。
 
 ## 9. 常见问题
 
@@ -142,13 +142,13 @@ server {
 执行：
 
 ```bash
-npx playwright install chromium
+pnpm exec playwright install chromium
 ```
 
 或指定系统浏览器：
 
 ```bash
-PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run start
+PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium pnpm start
 ```
 
 ### `/api/ready` 返回 `PDF_BROWSER_UNAVAILABLE`
@@ -160,11 +160,11 @@ PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run start
 默认会拦截外部 HTTP(S) 资源。可以选择：
 
 ```bash
-PDF_ALLOWED_RESOURCE_ORIGINS=https://static.example.com npm run start
+PDF_ALLOWED_RESOURCE_ORIGINS=https://static.example.com pnpm start
 ```
 
 或放开所有外部资源：
 
 ```bash
-PDF_ALLOW_EXTERNAL_RESOURCES=true npm run start
+PDF_ALLOW_EXTERNAL_RESOURCES=true pnpm start
 ```
