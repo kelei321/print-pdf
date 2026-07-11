@@ -108,7 +108,7 @@ X-PDF-Render-Duration-Ms: 1760
 ```json
 {
   "code": "PDF_PRINT_READY_TIMEOUT",
-  "message": "Waiting for window.__PRINT_READY__ timed out",
+  "message": "Waiting for printable assets timed out",
   "requestId": "..."
 }
 ```

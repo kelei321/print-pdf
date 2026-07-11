@@ -1,7 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
-import { toErrorResponse } from './errors.js';
 
 const readyHtml = '<!doctype html><html><body><script>window.__PRINT_READY__=true</script></body></html>';
 
@@ -29,19 +28,23 @@ describe('GET /api/status', () => {
 });
 
 describe('request parsing errors', () => {
-  it('preserves a 413 response for an oversized JSON body', () => {
-    const response = toErrorResponse(Object.assign(new Error('request entity too large'), {
-      type: 'entity.too.large',
-      status: 413
-    }));
+  it.each([
+    ['a generated request id', undefined],
+    ['the caller request id', 'req-too-large']
+  ])('returns 413 with %s when JSON exceeds the configured limit', async (_label, requestId) => {
+    const app = createApp({ renderer: vi.fn(), requestBodyLimitBytes: 128 });
+    let pendingRequest = request(app)
+      .post('/api/pdf/render')
+      .send({ html: 'x'.repeat(256) });
 
-    expect(response).toEqual({
-      status: 413,
-      body: {
-        code: 'PDF_REQUEST_TOO_LARGE',
-        message: 'Request body exceeds the maximum allowed size'
-      }
-    });
+    if (requestId) pendingRequest = pendingRequest.set('X-Request-Id', requestId);
+    const response = await pendingRequest;
+
+    expect(response.status).toBe(413);
+    expect(response.body.code).toBe('PDF_REQUEST_TOO_LARGE');
+    expect(response.body.requestId).toBeTruthy();
+    expect(response.headers['x-request-id']).toBe(response.body.requestId);
+    if (requestId) expect(response.body.requestId).toBe(requestId);
   });
 });
 

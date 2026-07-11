@@ -2,7 +2,7 @@ import { pdfConfig } from './config.js';
 import { PdfError } from './errors.js';
 import { launchBrowser } from './browserLauncher.js';
 
-let browserPromise;
+const browserProvider = createBrowserProvider();
 
 export function validateRenderRequest(payload) {
   if (!payload || typeof payload !== 'object') {
@@ -31,12 +31,8 @@ export function validateRenderRequest(payload) {
 }
 
 export async function renderPdf(request) {
-  const browser = await getBrowser();
-  const context = await browser.newContext({
-    javaScriptEnabled: pdfConfig.allowHtmlJavaScript,
-    bypassCSP: false,
-    acceptDownloads: false
-  });
+  const browser = await browserProvider.get();
+  const context = await browser.newContext(createBrowserContextOptions());
   const page = await context.newPage();
 
   try {
@@ -75,7 +71,7 @@ export async function renderPdf(request) {
 }
 
 export async function checkRendererReady() {
-  const browser = await getBrowser();
+  const browser = await browserProvider.get();
   const page = await browser.newPage();
 
   try {
@@ -91,33 +87,50 @@ export async function checkRendererReady() {
 }
 
 export async function closeBrowser() {
-  if (!browserPromise) return;
-  const browser = await browserPromise;
-  browserPromise = undefined;
-  await browser.close();
+  await browserProvider.close();
 }
 
-function getBrowser() {
-  if (!browserPromise) {
-    const launchPromise = launchBrowser();
-    browserPromise = launchPromise;
-    launchPromise.then((browser) => {
-      browser.once('disconnected', () => {
-        if (browserPromise === launchPromise) browserPromise = undefined;
+export function createBrowserContextOptions(config = pdfConfig) {
+  return {
+    javaScriptEnabled: config.allowHtmlJavaScript,
+    bypassCSP: false,
+    acceptDownloads: false
+  };
+}
+
+export function createBrowserProvider(launch = launchBrowser) {
+  let cachedPromise;
+
+  function get() {
+    if (!cachedPromise) {
+      const launchPromise = launch();
+      cachedPromise = launchPromise;
+      launchPromise.then((browser) => {
+        browser.once('disconnected', () => {
+          if (cachedPromise === launchPromise) cachedPromise = undefined;
+        });
+      }).catch(() => {
+        if (cachedPromise === launchPromise) cachedPromise = undefined;
       });
-    }).catch((error) => {
-      if (browserPromise === launchPromise) browserPromise = undefined;
-      return error;
-    });
+    }
+
+    return cachedPromise;
   }
 
-  return browserPromise;
+  async function close() {
+    if (!cachedPromise) return;
+    const browser = await cachedPromise;
+    cachedPromise = undefined;
+    await browser.close();
+  }
+
+  return { get, close };
 }
 
-async function waitForPrintReady(page) {
-  if (pdfConfig.allowHtmlJavaScript) {
+export async function waitForPrintReady(page, config = pdfConfig) {
+  if (config.allowHtmlJavaScript) {
     await page.waitForFunction(() => window.__PRINT_READY__ === true, null, {
-      timeout: pdfConfig.printReadyTimeoutMs
+      timeout: config.printReadyTimeoutMs
     });
     return;
   }
@@ -125,7 +138,7 @@ async function waitForPrintReady(page) {
   await page.waitForFunction(
     () => (!document.fonts || document.fonts.status === 'loaded') && Array.from(document.images).every((image) => image.complete),
     null,
-    { timeout: pdfConfig.printReadyTimeoutMs }
+    { timeout: config.printReadyTimeoutMs }
   );
 }
 

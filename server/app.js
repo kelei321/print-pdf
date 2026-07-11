@@ -6,7 +6,12 @@ import { createRenderQueue } from './renderQueue.js';
 import { renderPdf, validateRenderRequest, checkRendererReady } from './pdfRenderer.js';
 import { createRequestId } from './requestId.js';
 
-export function createApp({ renderer = renderPdf, readyCheck = checkRendererReady, queueConfig = {} } = {}) {
+export function createApp({
+  renderer = renderPdf,
+  readyCheck = checkRendererReady,
+  queueConfig = {},
+  requestBodyLimitBytes = pdfConfig.maxRequestBytes
+} = {}) {
   const app = express();
   const renderQueue = createRenderQueue({
     maxConcurrent: queueConfig.maxConcurrent ?? pdfConfig.maxConcurrentRenders,
@@ -15,12 +20,12 @@ export function createApp({ renderer = renderPdf, readyCheck = checkRendererRead
   });
 
   app.use(cors());
-  app.use(express.json({ limit: `${pdfConfig.maxRequestBytes}b` }));
   app.use((req, res, next) => {
     req.requestId = req.headers['x-request-id'] || createRequestId();
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
+  app.use(express.json({ limit: `${requestBodyLimitBytes}b` }));
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
