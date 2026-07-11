@@ -9,7 +9,7 @@
     "dev:server": "node --watch server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
-    "test": "vitest run server/app.test.js server/print-layout.test.js tests/render-queue.test.js tests/pdf-renderer.test.js tests/pdf-smoke.test.js",
+    "test": "vitest run server/app.test.js server/config.test.js server/print-layout.test.js tests/render-queue.test.js tests/pdf-renderer.test.js tests/pdf-smoke.test.js",
     "test:unit": "vitest run server/app.test.js",
     "test:layout": "vitest run server/print-layout.test.js",
     "test:pdf": "vitest run tests/pdf-smoke.test.js",

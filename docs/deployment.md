@@ -48,7 +48,7 @@ PDF_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium pnpm start
 | --- | --- | --- |
 | `PORT` | `3000` | PDF 服务端口 |
 | `PDF_MAX_HTML_BYTES` | `20971520` | 请求 HTML 最大字节数 |
-| `PDF_MAX_REQUEST_BYTES` | `22020096` | JSON 请求体最大字节数，需大于 HTML 上限以容纳其他字段 |
+| `PDF_MAX_REQUEST_BYTES` | `42991616` | 整个 JSON 请求体最大字节数，必须严格大于 HTML 上限；默认按 HTML 上限的两倍再加 1 MiB 计算 |
 | `PDF_RENDER_TIMEOUT_MS` | `120000` | HTML 加载和 PDF 生成超时 |
 | `PDF_PRINT_READY_TIMEOUT_MS` | `120000` | 等待 `window.__PRINT_READY__` 超时 |
 | `PDF_MAX_CONCURRENT` | `3` | 最大并发渲染数 |

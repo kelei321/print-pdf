@@ -80,6 +80,18 @@ describe('PDF renderer isolation', () => {
 });
 
 describe('browser cache recovery', () => {
+  it('retries launch after the cached launch promise rejects', async () => {
+    const browser = new EventEmitter();
+    const launch = vi.fn()
+      .mockRejectedValueOnce(new Error('launch failed'))
+      .mockResolvedValueOnce(browser);
+    const provider = createBrowserProvider(launch);
+
+    await expect(provider.get()).rejects.toThrow('launch failed');
+    expect(await provider.get()).toBe(browser);
+    expect(launch).toHaveBeenCalledTimes(2);
+  });
+
   it('launches a new browser after the cached browser disconnects', async () => {
     const browsers = [new EventEmitter(), new EventEmitter()];
     const launch = vi.fn()

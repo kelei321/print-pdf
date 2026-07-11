@@ -28,6 +28,25 @@ describe('GET /api/status', () => {
 });
 
 describe('request parsing errors', () => {
+  it('accepts HTML whose JSON escaping fits within the separate request limit', async () => {
+    const renderer = vi.fn(async () => Buffer.from('%PDF-1.4 mock'));
+    const app = createApp({ renderer, requestBodyLimitBytes: 256 });
+    const htmlLimitBytes = 128;
+    const html = '"\\\n\t'.repeat(25);
+    const htmlBytes = Buffer.byteLength(html, 'utf8');
+    const requestBytes = Buffer.byteLength(JSON.stringify({ html }), 'utf8');
+
+    expect(htmlBytes).toBeLessThanOrEqual(htmlLimitBytes);
+    expect(requestBytes).toBeGreaterThan(htmlBytes * 1.5);
+    expect(requestBytes).toBeLessThan(256);
+
+    const response = await request(app).post('/api/pdf/render').send({ html });
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(renderer).toHaveBeenCalledWith(expect.objectContaining({ html }));
+  });
+
   it.each([
     ['a generated request id', undefined],
     ['the caller request id', 'req-too-large']

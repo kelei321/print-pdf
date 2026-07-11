@@ -11,11 +11,31 @@ function readCsv(name) {
     .filter(Boolean);
 }
 
-const maxHtmlBytes = Number(process.env.PDF_MAX_HTML_BYTES || 20 * 1024 * 1024);
-const maxRequestBytes = Math.max(
-  maxHtmlBytes,
-  Number(process.env.PDF_MAX_REQUEST_BYTES || maxHtmlBytes + 1024 * 1024)
-);
+export function resolvePdfSizeLimits(env = process.env) {
+  const maxHtmlBytes = readPositiveInteger(env.PDF_MAX_HTML_BYTES, 20 * 1024 * 1024, 'PDF_MAX_HTML_BYTES');
+  const defaultMaxRequestBytes = maxHtmlBytes * 2 + 1024 * 1024;
+  const maxRequestBytes = readPositiveInteger(
+    env.PDF_MAX_REQUEST_BYTES,
+    defaultMaxRequestBytes,
+    'PDF_MAX_REQUEST_BYTES'
+  );
+
+  if (maxRequestBytes <= maxHtmlBytes) {
+    throw new Error('PDF_MAX_REQUEST_BYTES must be greater than PDF_MAX_HTML_BYTES');
+  }
+
+  return { maxHtmlBytes, maxRequestBytes };
+}
+
+function readPositiveInteger(value, fallback, name) {
+  const resolved = value === undefined || value === '' ? fallback : Number(value);
+  if (!Number.isSafeInteger(resolved) || resolved <= 0) {
+    throw new Error(`${name} must be a finite positive integer`);
+  }
+  return resolved;
+}
+
+const { maxHtmlBytes, maxRequestBytes } = resolvePdfSizeLimits();
 
 export const pdfConfig = {
   port: Number(process.env.PORT || 3000),

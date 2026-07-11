@@ -70,6 +70,8 @@ POST /api/pdf/render
 Content-Type: application/json
 ```
 
+`PDF_MAX_HTML_BYTES` 限制解码后的 HTML 字节数，`PDF_MAX_REQUEST_BYTES` 限制整个 JSON 请求体且必须严格大于前者。双引号、反斜杠、换行等字符在 JSON 字符串中转义后会增加请求体大小，因此默认请求上限会为转义和其他字段预留有界空间。
+
 请求体：
 
 ```json
