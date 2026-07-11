@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: 22.13
           package-manager-cache: false
+      - run: npm install --global corepack@latest
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
