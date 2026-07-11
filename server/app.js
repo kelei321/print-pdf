@@ -15,7 +15,7 @@ export function createApp({ renderer = renderPdf, readyCheck = checkRendererRead
   });
 
   app.use(cors());
-  app.use(express.json({ limit: `${pdfConfig.maxHtmlBytes}b` }));
+  app.use(express.json({ limit: `${pdfConfig.maxRequestBytes}b` }));
   app.use((req, res, next) => {
     req.requestId = req.headers['x-request-id'] || createRequestId();
     res.setHeader('X-Request-Id', req.requestId);
@@ -33,9 +33,11 @@ export function createApp({ renderer = renderPdf, readyCheck = checkRendererRead
       queue: renderQueue.getStats(),
       limits: {
         maxHtmlBytes: pdfConfig.maxHtmlBytes,
+        maxRequestBytes: pdfConfig.maxRequestBytes,
         renderTimeoutMs: pdfConfig.renderTimeoutMs,
         printReadyTimeoutMs: pdfConfig.printReadyTimeoutMs,
         allowExternalResources: pdfConfig.allowExternalResources,
+        allowHtmlJavaScript: pdfConfig.allowHtmlJavaScript,
         allowedResourceOrigins: pdfConfig.allowedResourceOrigins
       }
     });

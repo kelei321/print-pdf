@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
+import { toErrorResponse } from './errors.js';
 
 const readyHtml = '<!doctype html><html><body><script>window.__PRINT_READY__=true</script></body></html>';
 
@@ -17,9 +18,30 @@ describe('GET /api/status', () => {
         ok: true,
         requestId: 'req-status',
         queue: expect.objectContaining({ active: 0, queued: 0, maxConcurrent: expect.any(Number) }),
-        limits: expect.objectContaining({ maxHtmlBytes: expect.any(Number) })
+        limits: expect.objectContaining({
+          maxHtmlBytes: expect.any(Number),
+          maxRequestBytes: expect.any(Number),
+          allowHtmlJavaScript: false
+        })
       })
     );
+  });
+});
+
+describe('request parsing errors', () => {
+  it('preserves a 413 response for an oversized JSON body', () => {
+    const response = toErrorResponse(Object.assign(new Error('request entity too large'), {
+      type: 'entity.too.large',
+      status: 413
+    }));
+
+    expect(response).toEqual({
+      status: 413,
+      body: {
+        code: 'PDF_REQUEST_TOO_LARGE',
+        message: 'Request body exceeds the maximum allowed size'
+      }
+    });
   });
 });
 

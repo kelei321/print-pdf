@@ -141,12 +141,13 @@ PDF_PERF_ROWS=5000,10000 pnpm test:perf
 | --- | --- |
 | `PDF_HTML_REQUIRED` | 请求缺少 HTML |
 | `PDF_HTML_TOO_LARGE` | HTML 超过最大字节数 |
+| `PDF_REQUEST_TOO_LARGE` | 整个 JSON 请求体超过最大字节数 |
 | `PDF_FILE_URL_FORBIDDEN` | HTML 中包含 `file://` 资源 |
 | `PDF_RENDER_QUEUE_FULL` | 并发已满，且等待队列超过 `PDF_MAX_QUEUE` |
 | `PDF_RENDER_QUEUE_TIMEOUT` | 请求在队列中等待超过 `PDF_QUEUE_TIMEOUT_MS` |
 | `PDF_BROWSER_UNAVAILABLE` | 没有可用 Chromium 浏览器 |
 | `PDF_HTML_LOAD_TIMEOUT` | HTML 加载超时 |
-| `PDF_PRINT_READY_TIMEOUT` | 等待 `window.__PRINT_READY__` 超时 |
+| `PDF_PRINT_READY_TIMEOUT` | 等待字体、图片或可信模板的 `window.__PRINT_READY__` 超时 |
 | `PDF_RENDER_TIMEOUT` | PDF 生成超时 |
 | `PDF_RENDER_FAILED` | 未分类渲染错误 |
 

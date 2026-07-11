@@ -33,7 +33,7 @@ export function validateRenderRequest(payload) {
 export async function renderPdf(request) {
   const browser = await getBrowser();
   const context = await browser.newContext({
-    javaScriptEnabled: true,
+    javaScriptEnabled: pdfConfig.allowHtmlJavaScript,
     bypassCSP: false,
     acceptDownloads: false
   });
@@ -52,12 +52,9 @@ export async function renderPdf(request) {
     );
 
     await runWithTimeoutCode(
-      () =>
-        page.waitForFunction(() => window.__PRINT_READY__ === true, null, {
-          timeout: pdfConfig.printReadyTimeoutMs
-        }),
+      () => waitForPrintReady(page),
       'PDF_PRINT_READY_TIMEOUT',
-      'Waiting for window.__PRINT_READY__ timed out'
+      'Waiting for printable assets timed out'
     );
 
     return await runWithTimeoutCode(
@@ -102,13 +99,34 @@ export async function closeBrowser() {
 
 function getBrowser() {
   if (!browserPromise) {
-    browserPromise = launchBrowser().catch((error) => {
-      browserPromise = undefined;
-      throw error;
+    const launchPromise = launchBrowser();
+    browserPromise = launchPromise;
+    launchPromise.then((browser) => {
+      browser.once('disconnected', () => {
+        if (browserPromise === launchPromise) browserPromise = undefined;
+      });
+    }).catch((error) => {
+      if (browserPromise === launchPromise) browserPromise = undefined;
+      return error;
     });
   }
 
   return browserPromise;
+}
+
+async function waitForPrintReady(page) {
+  if (pdfConfig.allowHtmlJavaScript) {
+    await page.waitForFunction(() => window.__PRINT_READY__ === true, null, {
+      timeout: pdfConfig.printReadyTimeoutMs
+    });
+    return;
+  }
+
+  await page.waitForFunction(
+    () => (!document.fonts || document.fonts.status === 'loaded') && Array.from(document.images).every((image) => image.complete),
+    null,
+    { timeout: pdfConfig.printReadyTimeoutMs }
+  );
 }
 
 function createResourceGuard() {

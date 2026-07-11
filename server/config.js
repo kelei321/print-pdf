@@ -11,9 +11,16 @@ function readCsv(name) {
     .filter(Boolean);
 }
 
+const maxHtmlBytes = Number(process.env.PDF_MAX_HTML_BYTES || 20 * 1024 * 1024);
+const maxRequestBytes = Math.max(
+  maxHtmlBytes,
+  Number(process.env.PDF_MAX_REQUEST_BYTES || maxHtmlBytes + 1024 * 1024)
+);
+
 export const pdfConfig = {
   port: Number(process.env.PORT || 3000),
-  maxHtmlBytes: Number(process.env.PDF_MAX_HTML_BYTES || 20 * 1024 * 1024),
+  maxHtmlBytes,
+  maxRequestBytes,
   renderTimeoutMs: Number(process.env.PDF_RENDER_TIMEOUT_MS || 120000),
   printReadyTimeoutMs: Number(process.env.PDF_PRINT_READY_TIMEOUT_MS || process.env.PDF_RENDER_TIMEOUT_MS || 120000),
   maxConcurrentRenders: Number(process.env.PDF_MAX_CONCURRENT || 3),
@@ -23,6 +30,7 @@ export const pdfConfig = {
   browserExecutablePath: process.env.PDF_BROWSER_EXECUTABLE_PATH || '',
   browserSandbox: readBoolean('PDF_BROWSER_SANDBOX', false),
   allowExternalResources: readBoolean('PDF_ALLOW_EXTERNAL_RESOURCES', false),
+  allowHtmlJavaScript: readBoolean('PDF_ALLOW_HTML_JAVASCRIPT', false),
   allowedResourceOrigins: readCsv('PDF_ALLOWED_RESOURCE_ORIGINS'),
   defaultPaper: 'A4',
   defaultMargin: {

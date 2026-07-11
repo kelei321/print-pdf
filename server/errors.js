@@ -18,6 +18,16 @@ export function toErrorResponse(error) {
     };
   }
 
+  if (error?.type === 'entity.too.large' || error?.status === 413) {
+    return {
+      status: 413,
+      body: {
+        code: 'PDF_REQUEST_TOO_LARGE',
+        message: 'Request body exceeds the maximum allowed size'
+      }
+    };
+  }
+
   return {
     status: 500,
     body: {
