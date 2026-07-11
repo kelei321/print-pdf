@@ -10,7 +10,7 @@ Vue 3 + Node + Playwright 的打印页预览与服务端 PDF 导出示例，覆�
 - 服务端 Playwright PDF 导出，返回渲染耗时与 requestId
 - `/api/health` 基础健康检查，`/api/status` 队列状态，`/api/ready` 浏览器就绪检查
 - 浏览器启动 fallback：指定路径、指定 channel、Playwright Chromium、系统 Chromium/Chrome、Chrome/Edge channel
-- 默认禁止 `file://` 和外部 HTTP(S) 资源，可通过环境变量放开或配置白名单
+- 默认禁止 HTML JavaScript、`file://` 和外部 HTTP(S) 资源；可信模板可通过环境变量显式放开
 - 单测、布局测试、PDF smoke 测试和性能基准脚本
 
 ## 运行要求

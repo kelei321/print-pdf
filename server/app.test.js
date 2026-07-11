@@ -17,9 +17,53 @@ describe('GET /api/status', () => {
         ok: true,
         requestId: 'req-status',
         queue: expect.objectContaining({ active: 0, queued: 0, maxConcurrent: expect.any(Number) }),
-        limits: expect.objectContaining({ maxHtmlBytes: expect.any(Number) })
+        limits: expect.objectContaining({
+          maxHtmlBytes: expect.any(Number),
+          maxRequestBytes: expect.any(Number),
+          allowHtmlJavaScript: false
+        })
       })
     );
+  });
+});
+
+describe('request parsing errors', () => {
+  it('accepts HTML whose JSON escaping fits within the separate request limit', async () => {
+    const renderer = vi.fn(async () => Buffer.from('%PDF-1.4 mock'));
+    const app = createApp({ renderer, requestBodyLimitBytes: 256 });
+    const htmlLimitBytes = 128;
+    const html = '"\\\n\t'.repeat(25);
+    const htmlBytes = Buffer.byteLength(html, 'utf8');
+    const requestBytes = Buffer.byteLength(JSON.stringify({ html }), 'utf8');
+
+    expect(htmlBytes).toBeLessThanOrEqual(htmlLimitBytes);
+    expect(requestBytes).toBeGreaterThan(htmlBytes * 1.5);
+    expect(requestBytes).toBeLessThan(256);
+
+    const response = await request(app).post('/api/pdf/render').send({ html });
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(renderer).toHaveBeenCalledWith(expect.objectContaining({ html }));
+  });
+
+  it.each([
+    ['a generated request id', undefined],
+    ['the caller request id', 'req-too-large']
+  ])('returns 413 with %s when JSON exceeds the configured limit', async (_label, requestId) => {
+    const app = createApp({ renderer: vi.fn(), requestBodyLimitBytes: 128 });
+    let pendingRequest = request(app)
+      .post('/api/pdf/render')
+      .send({ html: 'x'.repeat(256) });
+
+    if (requestId) pendingRequest = pendingRequest.set('X-Request-Id', requestId);
+    const response = await pendingRequest;
+
+    expect(response.status).toBe(413);
+    expect(response.body.code).toBe('PDF_REQUEST_TOO_LARGE');
+    expect(response.body.requestId).toBeTruthy();
+    expect(response.headers['x-request-id']).toBe(response.body.requestId);
+    if (requestId) expect(response.body.requestId).toBe(requestId);
   });
 });
 

@@ -11,9 +11,36 @@ function readCsv(name) {
     .filter(Boolean);
 }
 
+export function resolvePdfSizeLimits(env = process.env) {
+  const maxHtmlBytes = readPositiveInteger(env.PDF_MAX_HTML_BYTES, 20 * 1024 * 1024, 'PDF_MAX_HTML_BYTES');
+  const defaultMaxRequestBytes = maxHtmlBytes * 2 + 1024 * 1024;
+  const maxRequestBytes = readPositiveInteger(
+    env.PDF_MAX_REQUEST_BYTES,
+    defaultMaxRequestBytes,
+    'PDF_MAX_REQUEST_BYTES'
+  );
+
+  if (maxRequestBytes <= maxHtmlBytes) {
+    throw new Error('PDF_MAX_REQUEST_BYTES must be greater than PDF_MAX_HTML_BYTES');
+  }
+
+  return { maxHtmlBytes, maxRequestBytes };
+}
+
+function readPositiveInteger(value, fallback, name) {
+  const resolved = value === undefined || value === '' ? fallback : Number(value);
+  if (!Number.isSafeInteger(resolved) || resolved <= 0) {
+    throw new Error(`${name} must be a finite positive integer`);
+  }
+  return resolved;
+}
+
+const { maxHtmlBytes, maxRequestBytes } = resolvePdfSizeLimits();
+
 export const pdfConfig = {
   port: Number(process.env.PORT || 3000),
-  maxHtmlBytes: Number(process.env.PDF_MAX_HTML_BYTES || 20 * 1024 * 1024),
+  maxHtmlBytes,
+  maxRequestBytes,
   renderTimeoutMs: Number(process.env.PDF_RENDER_TIMEOUT_MS || 120000),
   printReadyTimeoutMs: Number(process.env.PDF_PRINT_READY_TIMEOUT_MS || process.env.PDF_RENDER_TIMEOUT_MS || 120000),
   maxConcurrentRenders: Number(process.env.PDF_MAX_CONCURRENT || 3),
@@ -23,6 +50,7 @@ export const pdfConfig = {
   browserExecutablePath: process.env.PDF_BROWSER_EXECUTABLE_PATH || '',
   browserSandbox: readBoolean('PDF_BROWSER_SANDBOX', false),
   allowExternalResources: readBoolean('PDF_ALLOW_EXTERNAL_RESOURCES', false),
+  allowHtmlJavaScript: readBoolean('PDF_ALLOW_HTML_JAVASCRIPT', false),
   allowedResourceOrigins: readCsv('PDF_ALLOWED_RESOURCE_ORIGINS'),
   defaultPaper: 'A4',
   defaultMargin: {
